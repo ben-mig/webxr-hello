@@ -69,6 +69,9 @@
         <div>
             <h1>Hello World</h1>
             <p>A simple WebXR experience</p>
+            <p id="vr-hint" style="display: none; font-size: 0.9rem; margin-top: 2rem;">
+                🥽 VR headset detected! Click "Enter VR" to explore...
+            </p>
         </div>
     </div>
     
@@ -80,7 +83,6 @@
         let vrButton = document.getElementById('vr-button');
         let desktopView = document.getElementById('desktop-view');
         let vrCanvas = document.getElementById('vr-canvas');
-        let vrHint = document.getElementById('vr-hint');
         let isInVR = false;
         
         // Check if WebXR is supported
@@ -88,7 +90,6 @@
             navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
                 if (supported) {
                     vrButton.style.display = 'block';
-                    vrHint.style.display = 'block';
                     initVRScene();
                 }
             });
