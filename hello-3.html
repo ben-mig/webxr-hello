@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebXR Hello World</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        #desktop-view {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            transition: opacity 0.5s;
+        }
+        
+        #desktop-view h1 {
+            font-size: 4rem;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        #desktop-view p {
+            font-size: 1.2rem;
+            margin-top: 1rem;
+            opacity: 0.8;
+        }
+        
+        #vr-canvas {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        #vr-button {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            border: 2px solid white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            display: none;
+            z-index: 1000;
+        }
+        
+        #vr-button:hover {
+            background: rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="desktop-view">
+        <div>
+            <h1>Hello World</h1>
+            <p>A simple WebXR experience</p>
+        </div>
+    </div>
+    
+    <canvas id="vr-canvas"></canvas>
+    <button id="vr-button">Enter VR</button>
+    
+    <script>
+        let scene, camera, renderer;
+        let vrButton = document.getElementById('vr-button');
+        let desktopView = document.getElementById('desktop-view');
+        let vrCanvas = document.getElementById('vr-canvas');
+        let vrHint = document.getElementById('vr-hint');
+        let isInVR = false;
+        
+        // Check if WebXR is supported
+        if ('xr' in navigator) {
+            navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                if (supported) {
+                    vrButton.style.display = 'block';
+                    vrHint.style.display = 'block';
+                    initVRScene();
+                }
+            });
+        }
+        
+        function initVRScene() {
+            // Initialize Three.js scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 1.6, 3);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ 
+                canvas: vrCanvas,
+                antialias: true,
+                alpha: true
+            });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true;
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            scene.add(directionalLight);
+            
+            // Create the 2D "Hello World" panel that appears in front
+            const panelGeometry = new THREE.PlaneGeometry(4, 2);
+            const panelMaterial = new THREE.MeshBasicMaterial({
+                color: 0x667eea,
+                side: THREE.DoubleSide
+            });
+            const panel = new THREE.Mesh(panelGeometry, panelMaterial);
+            panel.position.z = -2;
+            panel.position.y = 1.6;
+            scene.add(panel);
+            
+            // Add text to panel (using canvas texture)
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#667eea';
+            ctx.fillRect(0, 0, 512, 256);
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 60px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Hello World', 256, 120);
+            ctx.font = '30px Arial';
+            ctx.fillText('Look behind you! 👀', 256, 180);
+            
+            const textTexture = new THREE.CanvasTexture(canvas);
+            panel.material = new THREE.MeshBasicMaterial({ map: textTexture });
+            
+            // Easter Egg 1: Creepy figure behind the user
+            const figureGroup = new THREE.Group();
+            
+            // Body
+            const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.8, 8);
+            const bodyMaterial = new THREE.MeshPhongMaterial({
+                color: 0x2a2a2a,
+                emissive: 0x111111,
+                shininess: 10
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.9;
+            figureGroup.add(body);
+            
+            // Head
+            const headGeometry = new THREE.SphereGeometry(0.25, 8, 6);
+            const headMaterial = new THREE.MeshPhongMaterial({
+                color: 0x3a3a3a,
+                emissive: 0x0a0a0a
+            });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 2;
+            figureGroup.add(head);
+            
+            // Glowing eyes
+            const eyeGeometry = new THREE.SphereGeometry(0.05, 4, 4);
+            const eyeMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff0000,
+                emissive: 0xff0000
+            });
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.08, 2, -0.2);
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.08, 2, -0.2);
+            figureGroup.add(leftEye);
+            figureGroup.add(rightEye);
+            
+            // Arms
+            const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 6);
+            const leftArm = new THREE.Mesh(armGeometry, bodyMaterial);
+            leftArm.position.set(-0.4, 1.2, 0);
+            leftArm.rotation.z = 0.3;
+            const rightArm = new THREE.Mesh(armGeometry, bodyMaterial);
+            rightArm.position.set(0.4, 1.2, 0);
+            rightArm.rotation.z = -0.3;
+            figureGroup.add(leftArm);
+            figureGroup.add(rightArm);
+            
+            figureGroup.position.set(0, 0, 4);
+            scene.add(figureGroup);
+            
+            // Audio context for mumbling
+            let audioContext = null;
+            let oscillator = null;
+            let gainNode = null;
+            let isPlaying = false;
+            
+            function startMumbling() {
+                if (isPlaying) return;
+                
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                oscillator = audioContext.createOscillator();
+                gainNode = audioContext.createGain();
+                
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.value = 80;
+                gainNode.gain.value = 0.1;
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.start();
+                isPlaying = true;
+                
+                // Modulate the mumbling
+                setInterval(() => {
+                    if (oscillator && isPlaying) {
+                        oscillator.frequency.value = 60 + Math.random() * 40;
+                        gainNode.gain.value = 0.05 + Math.random() * 0.1;
+                    }
+                }, 100);
+            }
+            
+            // Check if user is looking at the figure
+            let hasTriggered = false;
+            function checkUserFacing() {
+                if (!camera || hasTriggered) return;
+                
+                const cameraDirection = new THREE.Vector3();
+                camera.getWorldDirection(cameraDirection);
+                
+                // Check if camera is facing towards positive Z (behind initial view)
+                if (cameraDirection.z > 0.5) {
+                    hasTriggered = true;
+                    startMumbling();
+                }
+            }
+            
+            // Easter Egg 2: Hidden message on the "floor"
+            const floorCanvas = document.createElement('canvas');
+            floorCanvas.width = 512;
+            floorCanvas.height = 512;
+            const floorCtx = floorCanvas.getContext('2d');
+            floorCtx.fillStyle = '#1a1a1a';
+            floorCtx.fillRect(0, 0, 512, 512);
+            floorCtx.fillStyle = '#444';
+            floorCtx.font = 'bold 40px Arial';
+            floorCtx.textAlign = 'center';
+            floorCtx.save();
+            floorCtx.translate(256, 256);
+            floorCtx.rotate(-Math.PI / 2);
+            floorCtx.fillText('🎮 Achievement Unlocked!', 0, 0);
+            floorCtx.fillText('VR Explorer', 0, 50);
+            floorCtx.restore();
+            
+            const floorTexture = new THREE.CanvasTexture(floorCanvas);
+            const floorGeometry = new THREE.PlaneGeometry(10, 10);
+            const floorMaterial = new THREE.MeshBasicMaterial({ 
+                map: floorTexture,
+                side: THREE.DoubleSide
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = -0.5;
+            scene.add(floor);
+            
+            // Easter Egg 3: Floating crystals scattered around
+            const crystals = [];
+            for (let i = 0; i < 5; i++) {
+                const crystalGeometry = new THREE.OctahedronGeometry(0.3, 0);
+                const crystalMaterial = new THREE.MeshPhongMaterial({
+                    color: new THREE.Color().setHSL(Math.random(), 0.5, 0.5),
+                    emissive: 0x0044aa,
+                    shininess: 100
+                });
+                const crystal = new THREE.Mesh(crystalGeometry, crystalMaterial);
+                crystal.position.set(
+                    (Math.random() - 0.5) * 6,
+                    1 + Math.random() * 2,
+                    (Math.random() - 0.5) * 6
+                );
+                crystals.push(crystal);
+                scene.add(crystal);
+            }
+            
+            // Easter Egg 4: Hidden portal on the ceiling
+            const portalGeometry = new THREE.RingGeometry(0.5, 1, 32);
+            const portalMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff00ff,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.8
+            });
+            const portal = new THREE.Mesh(portalGeometry, portalMaterial);
+            portal.position.y = 4;
+            portal.rotation.x = -Math.PI / 2;
+            scene.add(portal);
+            
+            // Easter Egg 5: Particle system around the portal
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particleCount = 100;
+            const positions = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 0.5 + Math.random() * 1;
+                positions[i] = Math.cos(angle) * radius;
+                positions[i + 1] = 4 + (Math.random() - 0.5) * 0.5;
+                positions[i + 2] = Math.sin(angle) * radius;
+            }
+            
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const particlesMaterial = new THREE.PointsMaterial({
+                color: 0xff00ff,
+                size: 0.05,
+                transparent: true,
+                opacity: 0.6
+            });
+            const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particles);
+            
+            // Animation loop
+            function animate() {
+                // Check if user turned around
+                checkUserFacing();
+                
+                // Twitch the figure
+                if (hasTriggered) {
+                    figureGroup.rotation.y = Math.sin(Date.now() * 0.01) * 0.1;
+                    head.rotation.x = Math.sin(Date.now() * 0.02) * 0.2;
+                    head.rotation.z = Math.cos(Date.now() * 0.015) * 0.15;
+                    leftArm.rotation.x = Math.sin(Date.now() * 0.03) * 0.3;
+                    rightArm.rotation.x = Math.cos(Date.now() * 0.025) * 0.3;
+                    
+                    // Eye glow pulsing
+                    const eyeIntensity = 0.5 + Math.sin(Date.now() * 0.01) * 0.5;
+                    leftEye.material.emissiveIntensity = eyeIntensity;
+                    rightEye.material.emissiveIntensity = eyeIntensity;
+                }
+                
+                // Rotate crystals
+                crystals.forEach((crystal, i) => {
+                    crystal.rotation.x += 0.01 * (i + 1);
+                    crystal.rotation.y += 0.02 * (i + 1);
+                    crystal.position.y += Math.sin(Date.now() * 0.001 + i) * 0.002;
+                });
+                
+                // Pulse portal
+                portal.scale.x = 1 + Math.sin(Date.now() * 0.001) * 0.1;
+                portal.scale.y = 1 + Math.sin(Date.now() * 0.001) * 0.1;
+                
+                // Animate particles
+                particles.rotation.y += 0.005;
+                
+                renderer.render(scene, camera);
+            }
+            
+            renderer.setAnimationLoop(animate);
+        }
+        
+        // VR button click handler
+        vrButton.addEventListener('click', async () => {
+            if (!isInVR) {
+                const session = await navigator.xr.requestSession('immersive-vr', {
+                    optionalFeatures: ['local-floor', 'bounded-floor']
+                });
+                
+                renderer.xr.setSession(session);
+                
+                // Hide desktop view and show VR canvas
+                desktopView.style.display = 'none';
+                vrCanvas.style.display = 'block';
+                vrButton.textContent = 'Exit VR';
+                isInVR = true;
+                
+                session.addEventListener('end', () => {
+                    desktopView.style.display = 'flex';
+                    vrCanvas.style.display = 'none';
+                    vrButton.textContent = 'Enter VR';
+                    isInVR = false;
+                    hasTriggered = false;
+                    if (isPlaying && oscillator) {
+                        oscillator.stop();
+                        isPlaying = false;
+                    }
+                });
+            } else {
+                renderer.xr.getSession().end();
+            }
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+    </script>
+</body>
+</html>
